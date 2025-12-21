@@ -175,6 +175,12 @@ function Game:main_menu(change_context)
 		},
 	})
 
+	-- Add BMP profile UI in upper left corner
+	if MP.UI.Create_BMP_Profile then MP.UI.Create_BMP_Profile() end
+
+	-- Refresh profile data if connected (refresh on main menu open)
+	if MP.DISCORD_AUTH and MP.DISCORD_AUTH.is_connected() then MP.DISCORD_AUTH.fetch_profile() end
+
 	return ret
 end
 
@@ -1124,6 +1130,16 @@ function G.FUNCS.play_options(e)
 	})
 end
 
+function G.FUNCS.connect_discord(e)
+	MP.DISCORD_AUTH.start_auth()
+	MP.UI.Update_BMP_Profile()
+end
+
+function G.FUNCS.disconnect_discord(e)
+	MP.DISCORD_AUTH.disconnect()
+	MP.UI.Update_BMP_Profile()
+end
+
 function G.FUNCS.create_lobby(e)
 	G.SETTINGS.paused = true
 
@@ -1217,6 +1233,7 @@ local create_UIBox_main_menu_buttonsRef = create_UIBox_main_menu_buttons
 function create_UIBox_main_menu_buttons()
 	local menu = create_UIBox_main_menu_buttonsRef()
 	menu.nodes[1].nodes[1].nodes[1].nodes[1].config.button = "play_options"
+
 	return menu
 end
 

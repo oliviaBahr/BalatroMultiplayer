@@ -461,6 +461,17 @@ function set_main_menu_UI()
 		if G.STAGE == G.STAGES.MAIN_MENU then G.FUNCS.display_lobby_main_menu_UI() end
 	else
 		set_main_menu_UI_ref()
+		-- Create BMP profile UI after main menu UI is created
+		if MP.UI and MP.UI.Create_BMP_Profile then
+			G.E_MANAGER:add_event(Event({
+				blockable = false,
+				blocking = false,
+				func = function()
+					if G.MAIN_MENU_UI and not G.OVERLAY_MENU then MP.UI.Create_BMP_Profile() end
+					return true
+				end,
+			}))
+		end
 	end
 end
 

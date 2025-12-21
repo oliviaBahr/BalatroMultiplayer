@@ -559,6 +559,15 @@ return {
 			b_unready = "Unready",
 			b_leave_lobby = "Leave Lobby",
 			b_mp_discord = "Balatro Multiplayer Discord Server",
+			b_connect_discord = "Connect Discord",
+			b_disconnect_discord = "Disconnect Discord",
+			b_connecting_discord = "Connecting...",
+			k_profile_username = "Username",
+			k_profile_ranked_mmr = "Ranked MMR",
+			k_profile_smallworld_mmr = "Smallworld MMR",
+			k_profile_vanilla_mmr = "Vanilla MMR",
+			k_profile_loading = "Loading profile...",
+			k_profile_not_available = "N/A",
 			b_start = "START",
 			b_wait_for_host_start = {
 				"WAITING FOR",
@@ -848,7 +857,7 @@ return {
 			c_mp_balancing_act = "Balancing Act",
 			c_mp_salvaged_sibyl = "Salvaged Sibyl",
 			c_mp_polymorph_spam = "Polymorph Spam",
-			c_mp_all_must_go = "All Must Go"
+			c_mp_all_must_go = "All Must Go",
 		},
 	},
 }

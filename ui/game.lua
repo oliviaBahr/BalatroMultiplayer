@@ -1040,6 +1040,7 @@ function Game:start_run(args)
 
 	local scale = 0.4
 	local hud_ante = G.HUD:get_UIE_by_ID("hud_ante")
+	if not hud_ante then return end -- should never happen. make the linter happy
 	hud_ante.children[1].children[1].config.text = localize("k_lives")
 
 	-- Set lives number

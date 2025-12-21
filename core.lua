@@ -34,6 +34,7 @@ MP.LOBBY = {
 MP.GAME = {}
 MP.UI = {}
 MP.ACTIONS = {}
+MP.DISCORD_AUTH = {}
 MP.INTEGRATIONS = {
 	Preview = SMODS.Mods["Multiplayer"].config.integrations.Preview,
 }
@@ -92,6 +93,9 @@ end
 MP.load_mp_file("misc/utils.lua")
 MP.load_mp_file("misc/insane_int.lua")
 MP.load_mp_file("misc/hide_content.lua")
+MP.load_mp_file("misc/http_client.lua")
+MP.load_mp_file("misc/discord_auth.lua")
+MP.load_mp_file("misc/debug_borders.lua")
 
 function MP.reset_lobby_config(persist_ruleset_and_gamemode)
 	sendDebugMessage("Resetting lobby options", "MULTIPLAYER")
