@@ -162,13 +162,6 @@ return {
 		labels = {
 			mp_phantom = "Fantôme",
 		},
-		challenge_names = {
-			c_mp_standard = "Standard",
-			c_mp_badlatro = "Badlatro",
-			c_mp_tournament = "Tournoi",
-			c_mp_weekly = "Hebdo",
-			c_mp_vanilla = "Vanilla",
-		},
 		dictionary = {
 			b_singleplayer = "Solo",
 			b_join_lobby = "Rejoindre un Lobby",
@@ -321,6 +314,11 @@ return {
 			ch_c_glass_cards_rework = { "{C:attention}Les Cartes Verre{} sont {C:dark_edition}modifiées" },
 		},
 		challenge_names = {
+			c_mp_standard = "Standard",
+			c_mp_badlatro = "Badlatro",
+			c_mp_tournament = "Tournoi",
+			c_mp_weekly = "Hebdo",
+			c_mp_vanilla = "Vanilla",
 			c_mp_misprint_deck = "Deck Erreur d'Impression",
 			c_mp_legendaries = "Légendaires",
 			c_mp_psychosis = "Psychose",

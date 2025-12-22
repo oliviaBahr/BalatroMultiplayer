@@ -547,14 +547,6 @@ return {
 		labels = {
 			mp_phantom = "Phantom",
 		},
-		challenge_names = {
-			c_mp_standard = "Standard",
-			c_mp_sandbox = "Sandbox",
-			c_mp_badlatro = "Badlatro",
-			c_mp_tournament = "Tournament",
-			c_mp_weekly = "Weekly",
-			c_mp_vanilla = "Vanilla",
-		},
 		dictionary = {
 			b_singleplayer = "Singleplayer",
 			b_join_lobby = "Join Lobby",
@@ -784,6 +776,12 @@ return {
 			ch_c_mp_polymorph_spam_EXTENDED2 = { "where {C:attention}N{} is its current position in slots" },
 		},
 		challenge_names = {
+			c_mp_standard = "Standard",
+			c_mp_sandbox = "Sandbox",
+			c_mp_badlatro = "Badlatro",
+			c_mp_tournament = "Tournament",
+			c_mp_weekly = "Weekly",
+			c_mp_vanilla = "Vanilla",
 			c_mp_misprint_deck = "Misprint Deck",
 			c_mp_legendaries = "Legendaries",
 			c_mp_psychosis = "Psychosis",
