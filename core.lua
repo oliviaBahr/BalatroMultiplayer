@@ -56,6 +56,19 @@ function MP.should_use_the_order()
 end
 
 function MP.load_mp_file(file)
+	-- Check if this is a thread file (ends with .thread.lua)
+	-- Thread files are read as raw text instead of being executed
+	if file:match("%.thread%.lua$") then
+		local file_path = MP.path .. "/" .. file
+		local file_content, err = NFS.read(file_path)
+		if not file_content then
+			sendWarnMessage("Failed to read thread file: " .. tostring(err), "MULTIPLAYER")
+			return nil
+		end
+		return file_content
+	end
+
+	-- Regular files are loaded and executed normally
 	local chunk, err = SMODS.load_file(file, "Multiplayer")
 	if chunk then
 		local ok, func = pcall(chunk)

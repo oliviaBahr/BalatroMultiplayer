@@ -90,9 +90,7 @@ local function get_mmr_change_colour(profile_data, mmr_change_key)
 end
 
 local function create_gain_loss_col(queue_mmr_change_key, profile_data)
-	local mmr_change_str = MP.BMP_PROFILE_REF[queue_mmr_change_key]
 	local bg_colour = get_mmr_change_colour(profile_data, queue_mmr_change_key)
-	local display_text = mmr_change_str or "—"
 
 	return create_col_node({
 		align = "cm",
@@ -102,7 +100,8 @@ local function create_gain_loss_col(queue_mmr_change_key, profile_data)
 		colour = bg_colour,
 	}, {
 		create_text_node({
-			text = display_text,
+			ref_table = MP.BMP_PROFILE_REF,
+			ref_value = queue_mmr_change_key,
 			scale = 0.35,
 			colour = G.C.WHITE,
 			shadow = true,

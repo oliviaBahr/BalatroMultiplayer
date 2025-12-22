@@ -11,6 +11,8 @@ local auth_loading = false
 -- Profile data storage
 MP.DISCORD_AUTH.profile_data = nil
 local profile_loading = false
+local profile_thread = nil
+local profile_channel = nil
 
 -- Base64 encoding/decoding using love.data
 local function encode_token(token)
@@ -36,7 +38,7 @@ local function start_callback_server()
 	auth_callback_channel = love.thread.getChannel("discordAuthCallback")
 
 	-- Load and start the auth thread
-	local thread_code = MP.load_mp_file("misc/discord_auth_thread.lua")
+	local thread_code = MP.load_mp_file("misc/discord_auth.thread.lua")
 	if not thread_code then
 		sendWarnMessage("Failed to load Discord auth thread", "DISCORD_AUTH")
 		return false
@@ -62,6 +64,37 @@ local function check_callback()
 			elseif data.token and data.user_id then
 				sendTraceMessage("Received callback from auth thread, processing...", "DISCORD_AUTH")
 				MP.DISCORD_AUTH.handle_callback(data.token, data.user_id)
+			end
+		end
+	end
+end
+
+-- Check for profile data from the profile thread
+local function check_profile_data()
+	if not profile_channel then return end
+
+	local msg = profile_channel:pop()
+	if msg then
+		local success, data = pcall(json.decode, msg)
+		if success and data then
+			if data.success and data.profile then
+				-- Profile fetched successfully
+				MP.DISCORD_AUTH.profile_data = data.profile
+				profile_loading = false
+				profile_thread = nil -- Thread will exit after sending data
+
+				sendTraceMessage("Profile data fetched successfully", "DISCORD_AUTH")
+
+				-- Update profile UI
+				if MP.UI and MP.UI.Update_BMP_Profile then MP.UI.Update_BMP_Profile() end
+			elseif data.error then
+				-- Profile fetch failed
+				sendWarnMessage("Failed to fetch profile: " .. tostring(data.error), "DISCORD_AUTH")
+				profile_loading = false
+				profile_thread = nil
+
+				-- Update profile UI to show error state
+				if MP.UI and MP.UI.Update_BMP_Profile then MP.UI.Update_BMP_Profile() end
 			end
 		end
 	end
@@ -182,6 +215,9 @@ function MP.DISCORD_AUTH.disconnect()
 	MP.DISCORD_AUTH.profile_data = nil
 	profile_loading = false
 
+	-- Clean up profile thread if running
+	if profile_thread then profile_thread = nil end
+
 	sendTraceMessage("Discord disconnected", "DISCORD_AUTH")
 
 	-- Update profile UI
@@ -204,7 +240,7 @@ function MP.DISCORD_AUTH.is_profile_loading()
 	return profile_loading
 end
 
--- Fetch profile data from API
+-- Fetch profile data from API (now runs in a separate thread)
 function MP.DISCORD_AUTH.fetch_profile()
 	if not MP.DISCORD_AUTH.is_connected() then return end
 
@@ -222,97 +258,28 @@ function MP.DISCORD_AUTH.fetch_profile()
 	-- Update UI to show loading state
 	if MP.UI and MP.UI.Update_BMP_Profile then MP.UI.Update_BMP_Profile() end
 
-	-- Fetch Discord user info
-	local success, discord_user, error_msg =
-		MP.HTTP_CLIENT.trpc_request("discord.get_user_by_id", { user_id = user_id }, token)
+	-- Create channel for communication
+	profile_channel = love.thread.getChannel("discordProfileData")
 
-	if not success then
-		sendWarnMessage("Failed to fetch Discord user info: " .. tostring(error_msg), "DISCORD_AUTH")
+	-- Load and start the profile thread
+	local thread_code = MP.load_mp_file("misc/discord_profile.thread.lua")
+	if not thread_code then
+		sendWarnMessage("Failed to load Discord profile thread", "DISCORD_AUTH")
 		profile_loading = false
 		if MP.UI and MP.UI.Update_BMP_Profile then MP.UI.Update_BMP_Profile() end
 		return
 	end
 
-	-- Initialize profile data
-	local profile = {
-		username = (discord_user and discord_user.username) or "Unknown",
-		avatar_url = (discord_user and discord_user.avatar_url) or nil,
-		ranked_mmr = nil,
-		ranked_rank = nil,
-		ranked_mmr_change = nil,
-		smallworld_mmr = nil,
-		smallworld_rank = nil,
-		smallworld_mmr_change = nil,
-		vanilla_mmr = nil,
-		vanilla_rank = nil,
-		vanilla_mmr_change = nil,
-	}
+	local website_url = SMODS.Mods["Multiplayer"].config.website_url or "http://localhost:3000"
+	profile_thread = love.thread.newThread(thread_code)
+	profile_thread:start(user_id, token, website_url)
 
-	-- Fetch MMR data for each queue
-	local queues = {
-		{ id = "1", key = "ranked" },
-		{ id = "2", key = "smallworld" },
-		{ id = "4", key = "vanilla" },
-	}
-
-	local fetch_count = 0
-	local total_fetches = #queues * 2 -- MMR data + last game data
-
-	for _, queue in ipairs(queues) do
-		-- Fetch MMR and rank data
-		local mmr_success, mmr_data, mmr_error = MP.HTTP_CLIENT.trpc_request("leaderboard.get_user_rank", {
-			channel_id = queue.id,
-			user_id = user_id,
-			season = "season5",
-		}, token)
-
-		if mmr_success and mmr_data and mmr_data.data then
-			local mmr_key = queue.key .. "_mmr"
-			local rank_key = queue.key .. "_rank"
-			profile[mmr_key] = mmr_data.data.mmr or nil
-			profile[rank_key] = mmr_data.data.rank or nil
-		else
-			-- MMR data not available for this queue
-			local mmr_key = queue.key .. "_mmr"
-			local rank_key = queue.key .. "_rank"
-			profile[mmr_key] = nil
-			profile[rank_key] = nil
-		end
-
-		fetch_count = fetch_count + 1
-
-		-- Fetch last game data for mmrChange
-		local games_success, games_data, games_error = MP.HTTP_CLIENT.trpc_request("history.user_games", {
-			user_id = user_id,
-			queue_id = queue.id,
-		}, token)
-
-		if games_success and games_data and type(games_data) == "table" and #games_data > 0 then
-			-- Get the first game (most recent)
-			local last_game = games_data[1]
-			if last_game and last_game.mmrChange then
-				local mmr_change_key = queue.key .. "_mmr_change"
-				profile[mmr_change_key] = last_game.mmrChange
-			end
-		end
-
-		fetch_count = fetch_count + 1
-
-		-- If this is the last fetch, update UI
-		if fetch_count == total_fetches then
-			MP.DISCORD_AUTH.profile_data = profile
-			profile_loading = false
-
-			sendTraceMessage("Profile data fetched successfully", "DISCORD_AUTH")
-
-			-- Update profile UI
-			if MP.UI and MP.UI.Update_BMP_Profile then MP.UI.Update_BMP_Profile() end
-		end
-	end
+	sendTraceMessage("Started Discord profile fetch thread", "DISCORD_AUTH")
 end
 
--- Update function to check for callbacks (call this in game update loop)
--- This now just checks the channel for messages from the auth thread
+-- Update function to check for callbacks and profile data (call this in game update loop)
+-- This checks channels for messages from both the auth thread and profile thread
 function MP.DISCORD_AUTH.update(dt)
 	check_callback()
+	check_profile_data()
 end
