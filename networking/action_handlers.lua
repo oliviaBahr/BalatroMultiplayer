@@ -1027,6 +1027,9 @@ local game_update_ref = Game.update
 function Game:update(dt)
 	game_update_ref(self, dt)
 
+	-- Check for Discord auth callbacks
+	if MP.DISCORD_AUTH and MP.DISCORD_AUTH.update then MP.DISCORD_AUTH.update(dt) end
+
 	repeat
 		local msg = love.thread.getChannel("networkToUi"):pop()
 		if msg then
