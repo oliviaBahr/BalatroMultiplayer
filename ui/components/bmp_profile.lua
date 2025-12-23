@@ -3,16 +3,16 @@
 
 MP.BMP_PROFILE_UI = nil
 MP.BMP_PROFILE_REF = {
-	username = "",
-	ranked_mmr = "",
-	ranked_rank = "",
-	ranked_mmr_change = "",
-	smallworld_mmr = "",
-	smallworld_rank = "",
-	smallworld_mmr_change = "",
-	vanilla_mmr = "",
-	vanilla_rank = "",
-	vanilla_mmr_change = "",
+	username = localize("k_profile_username"),
+	ranked_mmr = "...",
+	ranked_rank = "...",
+	ranked_mmr_change = "...",
+	smallworld_mmr = "...",
+	smallworld_rank = "...",
+	smallworld_mmr_change = "...",
+	vanilla_mmr = "...",
+	vanilla_rank = "...",
+	vanilla_mmr_change = "...",
 	is_connected = false,
 }
 
@@ -33,45 +33,41 @@ local function create_col_node(config, nodes)
 	return { n = G.UIT.C, config = config, nodes = nodes }
 end
 
-local function update_profile_ref()
-	local is_connected = MP.DISCORD_AUTH.is_connected()
-	local profile_data = MP.DISCORD_AUTH.get_profile_data()
-	MP.BMP_PROFILE_REF.is_connected = is_connected
-	local default_value = is_connected and localize("k_profile_not_available") or ""
+local function create_ref_text_node(ref_value, scale, colour)
+	return create_text_node({
+		ref_table = MP.BMP_PROFILE_REF,
+		ref_value = ref_value,
+		scale = scale,
+		colour = colour or G.C.UI.TEXT_LIGHT,
+		shadow = true,
+	})
+end
 
-	if is_connected and profile_data then
-		MP.BMP_PROFILE_REF.username = profile_data.username or localize("k_profile_username")
-		for _, field in ipairs(MMR_FIELDS) do
-			MP.BMP_PROFILE_REF[field] = profile_data[field] and tostring(profile_data[field]) or default_value
-		end
-		-- Update rank fields
-		for _, config in ipairs(MMR_CONFIGS) do
-			local rank_key = config[3]
-			local mmr_change_key = config[4]
-			MP.BMP_PROFILE_REF[rank_key] = profile_data[rank_key] and ("#" .. tostring(profile_data[rank_key]))
-				or default_value
-			if profile_data[mmr_change_key] then
-				local change = tonumber(profile_data[mmr_change_key])
-				if change and change > 0 then
-					MP.BMP_PROFILE_REF[mmr_change_key] = "+" .. tostring(math.floor(change))
-				elseif change and change < 0 then
-					MP.BMP_PROFILE_REF[mmr_change_key] = "-" .. tostring(math.floor(math.abs(change)))
-				else
-					MP.BMP_PROFILE_REF[mmr_change_key] = "—"
-				end
+local function update_profile_ref()
+	local profile_data = MP.DISCORD_AUTH.get_profile_data()
+	if not profile_data then return end
+
+	if profile_data.username then MP.BMP_PROFILE_REF.username = profile_data.username end
+
+	for _, field in ipairs(MMR_FIELDS) do
+		if profile_data[field] ~= nil then MP.BMP_PROFILE_REF[field] = tostring(profile_data[field]) end
+	end
+
+	-- Update rank fields
+	for _, config in ipairs(MMR_CONFIGS) do
+		local rank_key = config[3]
+		local mmr_change_key = config[4]
+
+		if profile_data[rank_key] ~= nil then MP.BMP_PROFILE_REF[rank_key] = "#" .. tostring(profile_data[rank_key]) end
+
+		if profile_data[mmr_change_key] ~= nil then
+			local change = tonumber(profile_data[mmr_change_key])
+			if change and change ~= 0 then
+				local sign = change > 0 and "+" or "-"
+				MP.BMP_PROFILE_REF[mmr_change_key] = sign .. tostring(math.floor(math.abs(change)))
 			else
-				MP.BMP_PROFILE_REF[mmr_change_key] = default_value
+				MP.BMP_PROFILE_REF[mmr_change_key] = "—"
 			end
-		end
-	else
-		MP.BMP_PROFILE_REF.username = is_connected and localize("k_profile_username") or ""
-		for _, field in ipairs(MMR_FIELDS) do
-			MP.BMP_PROFILE_REF[field] = default_value
-		end
-		-- Clear rank and mmr_change fields
-		for _, config in ipairs(MMR_CONFIGS) do
-			MP.BMP_PROFILE_REF[config[3]] = default_value
-			MP.BMP_PROFILE_REF[config[4]] = default_value
 		end
 	end
 end
@@ -89,7 +85,8 @@ local function get_mmr_change_colour(profile_data, mmr_change_key)
 	end
 end
 
-local function create_gain_loss_col(queue_mmr_change_key, profile_data)
+local function create_gain_loss_col(queue_mmr_change_key)
+	local profile_data = MP.DISCORD_AUTH.get_profile_data()
 	local bg_colour = get_mmr_change_colour(profile_data, queue_mmr_change_key)
 
 	return create_col_node({
@@ -98,71 +95,32 @@ local function create_gain_loss_col(queue_mmr_change_key, profile_data)
 		minw = 0.5,
 		r = 0.1,
 		colour = bg_colour,
+		id = "bmp_mmr_change_" .. queue_mmr_change_key,
 	}, {
-		create_text_node({
-			ref_table = MP.BMP_PROFILE_REF,
-			ref_value = queue_mmr_change_key,
-			scale = 0.35,
-			colour = G.C.WHITE,
-			shadow = true,
-		}),
+		create_ref_text_node(queue_mmr_change_key, 0.35, G.C.WHITE),
 	})
 end
 
-local function create_rank_row(queue_rank_key)
+local function create_stat_row(ref_value, align, extra_stat_col_key)
+	local nodes = { create_ref_text_node(ref_value, 0.6) }
+	if extra_stat_col_key then table.insert(nodes, create_gain_loss_col(extra_stat_col_key)) end
 	return create_row_node({
-		align = "cm",
+		align = align or "cm",
 		padding = 0.15,
 		minw = 1.45,
 		r = 0.1,
 		hover = true,
 		colour = G.C.BLACK,
-	}, {
-		create_text_node({
-			ref_table = MP.BMP_PROFILE_REF,
-			ref_value = queue_rank_key,
-			scale = 0.6,
-			colour = G.C.UI.TEXT_LIGHT,
-			shadow = true,
-		}),
-	})
-end
-
-local function create_mmr_value_row(queue_mmr_key, queue_mmr_change_key, profile_data)
-	return create_row_node({
-		align = "tm",
-		padding = 0.15,
-		minw = 1.45,
-		r = 0.1,
-		hover = true,
-		colour = G.C.BLACK,
-	}, {
-		create_text_node({
-			ref_table = MP.BMP_PROFILE_REF,
-			ref_value = queue_mmr_key,
-			scale = 0.6,
-			colour = G.C.UI.TEXT_LIGHT,
-			shadow = true,
-		}),
-		create_gain_loss_col(queue_mmr_change_key, profile_data),
-	})
+	}, nodes)
 end
 
 local function create_username_box()
 	return create_col_node({ align = "cm", padding = 0.15, emboss = 0.1, r = 0.2, colour = G.C.L_BLACK, minw = 2.6 }, {
-		create_text_node({
-			ref_table = MP.BMP_PROFILE_REF,
-			ref_value = "username",
-			scale = 0.6,
-			colour = G.C.UI.TEXT_LIGHT,
-			shadow = true,
-		}),
+		create_ref_text_node("username", 0.6),
 	})
 end
 
-local function create_mmr_box(queue_name_key, queue_mmr_key, queue_rank_key, queue_mmr_change_key)
-	local profile_data = MP.DISCORD_AUTH.get_profile_data()
-
+local function create_queue_stats_box(queue_name_key, queue_mmr_key, queue_rank_key, queue_mmr_change_key)
 	return create_col_node({ align = "cm", padding = 0.1, emboss = 0.1, r = 0.2, colour = G.C.L_BLACK, minw = 2.6 }, {
 		create_row_node({ align = "cm" }, {
 			create_text_node({
@@ -172,91 +130,69 @@ local function create_mmr_box(queue_name_key, queue_mmr_key, queue_rank_key, que
 				shadow = true,
 			}),
 		}),
-		create_mmr_value_row(queue_mmr_key, queue_mmr_change_key, profile_data),
-		create_rank_row(queue_rank_key),
+		create_stat_row(queue_mmr_key, "tm", queue_mmr_change_key),
+		create_stat_row(queue_rank_key, "cm"),
+	})
+end
+
+local function create_button(button_config, sprite_atlas, sprite_pos)
+	local base_config = {
+		align = "cm",
+		minw = 0.6,
+		minh = 0.6,
+		r = 0.1,
+		hover = true,
+		shadow = true,
+		shadow_height = 0.5,
+	}
+	for k, v in pairs(button_config) do
+		base_config[k] = v
+	end
+	return create_col_node(base_config, {
+		{ n = G.UIT.O, config = { object = Sprite(0, 0, 0.3, 0.3, G.ASSET_ATLAS[sprite_atlas], sprite_pos) } },
 	})
 end
 
 local function create_settings_button()
-	return create_col_node({
-		align = "cm",
-		minw = 0.6,
-		minh = 0.6,
-		r = 0.1,
-		hover = true,
+	return create_button({
 		colour = G.C.GREY,
 		button = "bmp_open_settings",
-		shadow = true,
-		shadow_height = 0.5,
-	}, {
-		{ n = G.UIT.O, config = { object = Sprite(0, 0, 0.3, 0.3, G.ASSET_ATLAS["mod_tags"], { x = 2, y = 0 }) } },
-	})
+	}, "mod_tags", { x = 2, y = 0 })
 end
 
-local function create_disconnect_button()
-	return create_col_node({
-		align = "cm",
-		minw = 0.6,
-		minh = 0.6,
-		r = 0.1,
-		hover = true,
-		colour = G.C.RED,
-		button = "disconnect_discord",
-		shadow = true,
-		shadow_height = 0.5,
+local function create_discord_button()
+	local is_connected = MP.DISCORD_AUTH.is_connected()
+	return create_button({
+		colour = is_connected and G.C.RED or HEX("5865F2"),
+		button = is_connected and "disconnect_discord" or "connect_discord",
 		on_demand_tooltip = {
-			text = { localize("b_disconnect_discord") },
+			text = { localize(is_connected and "b_disconnect_discord" or "b_connect_discord") },
 		},
-	}, {
-		{ n = G.UIT.O, config = { object = Sprite(0, 0, 0.3, 0.3, G.ASSET_ATLAS["icons"], { x = 0, y = 0 }) } },
-	})
+	}, "icons", { x = 0, y = 0 })
 end
 
-local function create_connect_button_row()
-	return create_row_node({ align = "cm", padding = 0.2 }, {
-		UIBox_button({
-			id = "bmp_discord_button",
-			label = { localize("b_connect_discord") },
-			colour = G.C.BLUE,
-			button = "connect_discord",
+local function create_user_row()
+	return create_row_node({ align = "cl" }, {
+		create_username_box(),
+		create_col_node({ align = "cm", minw = 3 }, {
+			create_row_node({ align = "cr", padding = 0.1 }, {
+				create_settings_button(),
+				create_discord_button(),
+			}),
 		}),
 	})
 end
 
-local function create_profile_box()
-	local nodes = {}
-
-	if MP.BMP_PROFILE_REF.is_connected then
-		table.insert(
-			nodes,
-			create_row_node({ align = "cl" }, {
-				create_username_box(),
-				create_col_node({ align = "cm", minw = 3 }, {
-					create_row_node({ align = "cr", padding = 0.1 }, {
-						create_settings_button(),
-						create_disconnect_button(),
-					}),
-				}),
-			})
-		)
-	else
-		table.insert(nodes, { n = G.UIT.B, config = { w = 0.1, h = 0.1 } })
-		table.insert(nodes, create_connect_button_row())
-		table.insert(
-			nodes,
-			create_row_node({ align = "cl", padding = 0.1 }, {
-				create_username_box(),
-			})
-		)
-	end
-
-	for _, config in ipairs(MMR_CONFIGS) do
-		table.insert(
-			nodes,
-			create_row_node({ align = "cl" }, {
-				create_mmr_box(config[1], config[2], config[3], config[4]),
-			})
-		)
+local function create_profile_box(nodes)
+	if MP.DISCORD_AUTH.is_connected() then
+		for _, config in ipairs(MMR_CONFIGS) do
+			table.insert(
+				nodes,
+				create_row_node({ align = "cl" }, {
+					create_queue_stats_box(config[1], config[2], config[3], config[4]),
+				})
+			)
+		end
 	end
 
 	return UIBox({
@@ -291,8 +227,17 @@ function MP.UI.Create_BMP_Profile()
 	end
 	if not G.MAIN_MENU_UI or G.OVERLAY_MENU then return end
 
+	local is_connected = MP.DISCORD_AUTH.is_connected()
+	MP.BMP_PROFILE_REF.is_connected = is_connected
 	update_profile_ref()
-	MP.BMP_PROFILE_UI = create_profile_box()
+
+	if not is_connected then MP.BMP_PROFILE_REF.username = MP.UTILS.get_username() or localize("k_profile_username") end
+
+	local nodes = {}
+	-- Always add user row
+	table.insert(nodes, create_user_row())
+
+	MP.BMP_PROFILE_UI = create_profile_box(nodes)
 end
 
 function MP.UI.Update_BMP_Profile()
@@ -302,15 +247,27 @@ function MP.UI.Update_BMP_Profile()
 		return
 	end
 
+	local is_connected = MP.DISCORD_AUTH.is_connected()
 	local was_connected = MP.BMP_PROFILE_REF.is_connected
-	local had_profile_data = MP.DISCORD_AUTH.get_profile_data() ~= nil
+	local profile_data = MP.DISCORD_AUTH.get_profile_data()
+	local had_profile_data = profile_data ~= nil
+
+	MP.BMP_PROFILE_REF.is_connected = is_connected
 	update_profile_ref()
-	local has_profile_data = MP.DISCORD_AUTH.get_profile_data() ~= nil
 
 	-- Recreate UI if connection state changed or profile data was just loaded
-	if was_connected ~= MP.BMP_PROFILE_REF.is_connected or (not had_profile_data and has_profile_data) then
+	if was_connected ~= is_connected or (not had_profile_data and profile_data) then
 		MP.UI.Create_BMP_Profile()
-	elseif MP.BMP_PROFILE_UI and MP.BMP_PROFILE_UI.parent then
-		MP.BMP_PROFILE_UI.parent.UIBox:recalculate()
+	elseif profile_data then
+		-- Update MMR change background colors
+		for _, config in ipairs(MMR_CONFIGS) do
+			local mmr_change_key = config[4]
+			local color_node = MP.BMP_PROFILE_UI:get_UIE_by_ID("bmp_mmr_change_" .. mmr_change_key)
+			if color_node and color_node.config then
+				local new_colour = get_mmr_change_colour(profile_data, mmr_change_key)
+				if color_node.config.colour ~= new_colour then color_node.config.colour = new_colour end
+			end
+		end
+		MP.BMP_PROFILE_UI:recalculate()
 	end
 end
